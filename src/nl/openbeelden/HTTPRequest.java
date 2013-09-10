@@ -310,7 +310,6 @@ public class HTTPRequest {
 		int total = request.getTotalItems();
 		System.out.println(total);
 		request.printStatistics();
-		System.out.println("Something is changed");
 	}
 }
 
