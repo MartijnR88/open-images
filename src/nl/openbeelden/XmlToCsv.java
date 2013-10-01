@@ -24,7 +24,7 @@ public class XmlToCsv {
 	public static void main(String[] args) throws XPathExpressionException, ParserConfigurationException, SAXException, IOException {  
 		//writeVideoTagsToCsv();
 		writeTagVideoToCsv();
-		//writeDatasetToCsv();
+		writeDatasetToCsv();
 	}
 		
 	private static void writeVideoTagsToCsv() throws XPathExpressionException, ParserConfigurationException, SAXException, IOException {
@@ -108,6 +108,7 @@ public class XmlToCsv {
 	        if (tag.getNodeType() == Node.ELEMENT_NODE) {
 	            Element firstTag = (Element)tag;
 	            String tagName = firstTag.getElementsByTagName("name").item(0).getChildNodes().item(0).getNodeValue();
+	            System.out.println(tagName.trim());
 	            Element mediatotal = (Element) firstTag.getElementsByTagName("media").item(0);
 	            String totalVideos = mediatotal.getAttribute("total");
 	            NodeList videos = firstTag.getElementsByTagName("video");
@@ -146,7 +147,7 @@ public class XmlToCsv {
 	        }    
 		}
 
-		writeToCSV(result, "tagvideo.csv");
+		//writeToCSV(result, "tagvideo.csv");
 	}
 	  
 	private static void writeDatasetToCsv() throws XPathExpressionException, ParserConfigurationException, SAXException, IOException {
@@ -187,6 +188,7 @@ public class XmlToCsv {
 		            	abstr = firstVideo.getElementsByTagName("oi:abstract").item(0).getChildNodes().item(0).getNodeValue();
 		            String date = firstVideo.getElementsByTagName("oi:date").item(0).getChildNodes().item(0).getNodeValue();
 		            String extent = firstVideo.getElementsByTagName("oi:extent").item(0).getChildNodes().item(0).getNodeValue();
+		            extent = timeToSeconds(extent);
 		            String language = "";
 		            if (firstVideo.getElementsByTagName("oi:language").item(0).getChildNodes().item(0) != null)
 		            	language = firstVideo.getElementsByTagName("oi:language").item(0).getChildNodes().item(0).getNodeValue();
@@ -209,6 +211,24 @@ public class XmlToCsv {
 			writeToCSV(result, "dataset.csv");
 	}
 	
+	private static String timeToSeconds(String extent) {
+		//Format is PT1M36S
+		String result = "";
+		result = extent.replace("PT", "");
+		
+		if (result.contains("M")) {
+			int m = result.indexOf("M");
+			int minutesInSeconds = Integer.parseInt(result.substring(0, m)) * 60;
+			int seconds = Integer.parseInt(result.substring(m+1, result.indexOf("S")));
+			result = String.valueOf(minutesInSeconds + seconds);
+		}
+		else {
+			result = result.replace("S", "");
+		}
+		
+		return result;
+	}
+
 	private static String rewriteAttributionUrl(String url) {
 		    String result = "";    
 		    String[] results = url.split("/");
