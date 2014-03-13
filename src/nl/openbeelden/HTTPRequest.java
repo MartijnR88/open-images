@@ -32,11 +32,17 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+/** 
+ * 
+ * This class retrieves metadata from OpenBeelden and writes it to a XML file
+ * 
+ * */
 public class HTTPRequest {
 	private XPath xPath = XPathFactory.newInstance().newXPath();
 	private int count = 0;
 	private static final String MERGE_FILENAME = "mergedmetadata.xml";
 	
+	/** Writes the XML file that is read from an URL to a DOM format and use the method writeDomToFile to store it */
 	public void writeXMLtoDom(String urlToRead)
 			throws ParserConfigurationException, SAXException, IOException,
 			TransformerException, XPathExpressionException {
@@ -45,12 +51,14 @@ public class HTTPRequest {
 		BufferedReader rd;
 		String line;
 		String result = "";
+		//Set up connection
 		try {
 			url = new URL(urlToRead);
 			conn = (HttpURLConnection) url.openConnection();
 			conn.setRequestMethod("GET");
 			rd = new BufferedReader(
 					new InputStreamReader(conn.getInputStream()));
+			//Add everything that is read to a String
 			while ((line = rd.readLine()) != null) {
 				result += line;
 			}
@@ -64,8 +72,10 @@ public class HTTPRequest {
 		DocumentBuilder builder = factory.newDocumentBuilder();
 		Document document = builder.parse(new InputSource(new StringReader(
 				result)));
+		//Write DOM to a file
 		writeDomToFile(document);
 		
+		//Get the resumptiontoken
 		String expression = "OAI-PMH/ListRecords/resumptionToken";
 		NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document,
 				XPathConstants.NODESET);
@@ -74,11 +84,13 @@ public class HTTPRequest {
 			token = nodeList.item(0).getFirstChild().getNodeValue();
 		
 		System.out.println(token);
+		//As long as there are more results (pagination is used), retrieve them
 		if (token != ""){
 			writeXMLtoDom("http://openbeelden.nl/feeds/oai/?verb=ListRecords&resumptionToken=" + token);
 		}
 	}
 	
+	/** Write a Dom to a File */
 	public void writeDomToFile(Document document) throws TransformerException{
 		// Write DOM to XML file
 				TransformerFactory transformerFactory = TransformerFactory
@@ -91,6 +103,7 @@ public class HTTPRequest {
 				count = count + 1;
 	}
 	
+	/** Because all pages (from the pagination) are stored as a seperate XML file, they have to be merged into one big dataset */
 	public void mergeXMLFiles() throws TransformerException, SAXException, IOException, ParserConfigurationException {
 		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();   
 		domFactory.setIgnoringComments(true);  
@@ -99,6 +112,7 @@ public class HTTPRequest {
 		Document doc = builder.parse(new File("metadata0.xml"));
 		NodeList nodes = doc.getElementsByTagName("record");
 		
+		//Start with 1, because 0 is done before. 33 is hardcoded the number of pages that are retrieved and thus the number of files to be merged.
 		for (int i = 1; i < 33; i++){
 			Document doctemp = builder.parse(new File("metadata" + i + ".xml"));
 			NodeList nodestemp = doctemp.getElementsByTagName("record");
@@ -109,6 +123,7 @@ public class HTTPRequest {
 			}  	
 		}
 
+		//Write the merged DOM to a XML file
 		Transformer transformer = TransformerFactory.newInstance().newTransformer();  
 		transformer.setOutputProperty(OutputKeys.INDENT, "yes");  
 		StreamResult stream = new StreamResult(new File(MERGE_FILENAME));
@@ -116,16 +131,19 @@ public class HTTPRequest {
 		transformer.transform(source, stream);  
 	}
 	
+	/** Removes duplicate nodes from a XML file */
 	public void removeDuplicateNodes() throws ParserConfigurationException, SAXException, IOException, TransformerFactoryConfigurationError, TransformerException, XPathExpressionException{
 		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();   
 		domFactory.setIgnoringComments(true);  
 		DocumentBuilder builder = domFactory.newDocumentBuilder();   
 		
+		//Retrieve the data
 		Document doc = builder.parse(new File(MERGE_FILENAME));
 		NodeList nodeList = (NodeList) xPath.compile("OAI-PMH/ListRecords/record/header/identifier").evaluate(doc,
 				XPathConstants.NODESET);
 		ArrayList<String> duplicates = new ArrayList<String>();
 		
+		//Check for every node if there is a duplicate in the list
 		for (int i = 0; i < nodeList.getLength(); i++){
 			String n = nodeList.item(i).getFirstChild().getNodeValue();
 			for (int j = i+1; j < nodeList.getLength(); j++) {
@@ -134,6 +152,7 @@ public class HTTPRequest {
 			}
 		}
 				
+		//Remove the duplicates
 		for (int k = 0; k < duplicates.size(); k++) {
 			NodeList list = doc.getElementsByTagName("record");
 			for (int l = 0; l < list.getLength(); l++){
@@ -146,6 +165,7 @@ public class HTTPRequest {
 			}
 		}
 		
+		//Write the list without duplicates to a file
 		Transformer transformer = TransformerFactory.newInstance().newTransformer();  
 		transformer.setOutputProperty(OutputKeys.INDENT, "yes");  
 		StreamResult stream = new StreamResult(new File("dataset.xml"));
@@ -153,10 +173,10 @@ public class HTTPRequest {
 		transformer.transform(source, stream);  
 	}
 
+	/** Parse a XML file to a DOM */
 	public Document getMetadata() throws SAXException, IOException,
 			ParserConfigurationException, TransformerException,
 			XPathExpressionException {
-		// Parse requested string to DOM
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder = factory.newDocumentBuilder();
 		Document document = builder.parse(new FileInputStream("dataset.xml"));
@@ -164,10 +184,12 @@ public class HTTPRequest {
 		return document;
 	}
 	
+	/** Returns the total items in the dataset */
 	public int getTotalItems() throws XPathExpressionException, SAXException, IOException, ParserConfigurationException, TransformerException{		
 		return getMetadata().getElementsByTagName("record").getLength();
 	}
 
+	/** Get a list of nodes from a DOM. Which nodes is specified by the expression */
 	public List<String> getNodes(Document document, String expression)
 			throws XPathExpressionException {
 		ArrayList<String> result = new ArrayList<String>();
@@ -185,11 +207,13 @@ public class HTTPRequest {
 		return result;
 	}
 	
+	/** Print some statistics about the dataset, like the total number of occurences of a certain feature. Sorted by occurence. */
 	public Map<String, Integer> getStatistics(List<String> nodes){
 		Map<String, Integer> result = new HashMap<String, Integer>();
 		
 		result.put("Total number of nodes", nodes.size());
 		
+		//Retrieve all keys and if something was already in the list add 1
 		for (int i = 0; i < nodes.size(); i++){
 			String description = nodes.get(i);
 			if (result.containsKey(description)){
@@ -201,6 +225,7 @@ public class HTTPRequest {
 			}
 		}
 		
+		//Sort the keys by occurence
 		Set<String> keys = result.keySet();
 		ArrayList<String> removeKeys = new ArrayList<String>();
 		for (Iterator<String> it = keys.iterator(); it.hasNext(); ) {
@@ -216,6 +241,7 @@ public class HTTPRequest {
 			result.remove(removeKeys.get(j));
 		}
 		
+		//Create sorted map
 		ValueComparator bvc = new ValueComparator(result);
 		TreeMap<String, Integer> sorted_map = new TreeMap<String, Integer>(bvc);
 		sorted_map.putAll(result);
@@ -223,6 +249,7 @@ public class HTTPRequest {
 		return sorted_map;
 	}
 	
+	/** Print the statistics that you want */
 	public void printStatistics() throws XPathExpressionException, SAXException, IOException, ParserConfigurationException, TransformerException{
 		PrintWriter out = new PrintWriter("statistics.txt");
 		out.println("Total numer of items: " + getTotalItems());
@@ -289,6 +316,7 @@ public class HTTPRequest {
 		out.close();		
 	}
 	
+	/** Create XML files for all different portals */
 	public void createXMLFiles() throws XPathExpressionException, ParserConfigurationException, SAXException, IOException, TransformerException{
 		this.writeXMLtoDom("http://openbeelden.nl/feeds/oai/?verb=ListRecords&metadataPrefix=oai_oi&set=beeldengeluid");
 		this.writeXMLtoDom("http://openbeelden.nl/feeds/oai/?verb=ListRecords&metadataPrefix=oai_oi&set=eclap");

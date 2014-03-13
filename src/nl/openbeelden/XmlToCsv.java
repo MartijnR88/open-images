@@ -20,6 +20,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+/** This class writes a XML file to a CSV */
 public class XmlToCsv { 
 	public static void main(String[] args) throws XPathExpressionException, ParserConfigurationException, SAXException, IOException {  
 		//writeVideoTagsToCsv();
@@ -27,6 +28,13 @@ public class XmlToCsv {
 		writeDatasetToCsv();
 	}
 		
+	/** 
+	 * 
+	 * Write the tag dataset in a certain format to CSV.
+	 * The format is:
+	 * Videoname - Videonumber - Number of Plays - All tags for that video
+	 * 
+	 *  */
 	private static void writeVideoTagsToCsv() throws XPathExpressionException, ParserConfigurationException, SAXException, IOException {
 		List<List<String>> result = new ArrayList<List<String>>();
 		NodeList nodes = getNodes("tags.xml", "tags/tag");
@@ -62,6 +70,7 @@ public class XmlToCsv {
 	            	
 	            	boolean contains = false;
 	            	
+	            	//Get all tags for a certain video
 	            	for (int l = 0; l < result.size(); l++) {
 	            		List<String> temprow = result.get(l);
 	            		if (temprow.contains(videoNumber)){
@@ -85,9 +94,17 @@ public class XmlToCsv {
 	        }    
 		}
 
+		//Write the result to CSV
 		writeToCSV(result, "videotag.csv");
 	}
 	
+	/** 
+	 * 
+	 * Write the tag dataset in a certain format to CSV.
+	 * The format is:
+	 * Tag - VideoName - VideoNumber - Plays - Total videos for this tag 
+	 * 
+	 * */
 	private static void writeTagVideoToCsv() throws XPathExpressionException, ParserConfigurationException, SAXException, IOException {
 		List<List<String>> result = new ArrayList<List<String>>();
 		NodeList nodes = getNodes("tags.xml", "tags/tag");
@@ -113,6 +130,7 @@ public class XmlToCsv {
 	            String totalVideos = mediatotal.getAttribute("total");
 	            NodeList videos = firstTag.getElementsByTagName("video");
 	            
+	            //Some tags have no videos
 	            if (videos.getLength() == 0) {
 	            	List<String> row = new ArrayList<String>();
 	            	row.add(tagName.trim());
@@ -150,6 +168,7 @@ public class XmlToCsv {
 		//writeToCSV(result, "tagvideo.csv");
 	}
 	  
+	/** Writes the complete OpenBeelden Dataset to CSV format */
 	private static void writeDatasetToCsv() throws XPathExpressionException, ParserConfigurationException, SAXException, IOException {
 			List<List<String>> result = new ArrayList<List<String>>();
 			NodeList nodes = getNodes("dataset.xml", "OAI-PMH/ListRecords/record/metadata//*[name()='oai_oi:oi']");
@@ -166,11 +185,13 @@ public class XmlToCsv {
 			headers.add("AttributionURL");
 			result.add(headers);
 
+			//Get for every video the different features
 			for (int i = 0; i < nodes.getLength(); i++){
 				Node video = nodes.item(i);
 				
 		        if (video.getNodeType() == Node.ELEMENT_NODE) {
 		            Element firstVideo = (Element)video;
+		            //Get title
 		            String title = firstVideo.getElementsByTagName("oi:title").item(0).getChildNodes().item(0).getNodeValue();
 		            //All subjects
 		            String subject = "";
@@ -180,21 +201,28 @@ public class XmlToCsv {
 		            	if (subjectNode.getChildNodes() != null && subjectNode.getChildNodes().item(0) != null)
 		            		subject = subject + subjectNode.getChildNodes().item(0).getNodeValue() + ";";
 		            }
+		            //Get description
 		            String description = "";
 		            if(firstVideo.getElementsByTagName("oi:description").item(0).getChildNodes().item(0) != null)
 		            	description = firstVideo.getElementsByTagName("oi:description").item(0).getChildNodes().item(0).getNodeValue();
+		            //Get abstract
 		            String abstr = "";
 		            if (firstVideo.getElementsByTagName("oi:abstract").item(0).getChildNodes().item(0) != null)
 		            	abstr = firstVideo.getElementsByTagName("oi:abstract").item(0).getChildNodes().item(0).getNodeValue();
+		            //Get date
 		            String date = firstVideo.getElementsByTagName("oi:date").item(0).getChildNodes().item(0).getNodeValue();
+		            //Get extent
 		            String extent = firstVideo.getElementsByTagName("oi:extent").item(0).getChildNodes().item(0).getNodeValue();
 		            extent = timeToSeconds(extent);
+		            //Get language
 		            String language = "";
 		            if (firstVideo.getElementsByTagName("oi:language").item(0).getChildNodes().item(0) != null)
 		            	language = firstVideo.getElementsByTagName("oi:language").item(0).getChildNodes().item(0).getNodeValue();
+		            //Get attributionURL
 		            String attrurl = firstVideo.getElementsByTagName("oi:attributionURL").item(0).getChildNodes().item(0).getNodeValue();
 		            attrurl = rewriteAttributionUrl(attrurl);
 		            
+		            //Add all features to a row and add the row to the matrix
 			        ArrayList<String> row = new ArrayList<String>();
 			        row.add(title);
 			        row.add(subject);
@@ -208,20 +236,24 @@ public class XmlToCsv {
 		        }
 			}
 			
+			//Write the whole matrix to CSV
 			writeToCSV(result, "dataset.csv");
 	}
 	
+	/** Transforms the time format to seconds */
 	private static String timeToSeconds(String extent) {
 		//Format is PT1M36S
 		String result = "";
 		result = extent.replace("PT", "");
 		
+		//If the time contains minutes, transform them to seconds
 		if (result.contains("M")) {
 			int m = result.indexOf("M");
 			int minutesInSeconds = Integer.parseInt(result.substring(0, m)) * 60;
 			int seconds = Integer.parseInt(result.substring(m+1, result.indexOf("S")));
 			result = String.valueOf(minutesInSeconds + seconds);
 		}
+		//Otherwise, just remove the S
 		else {
 			result = result.replace("S", "");
 		}
@@ -229,6 +261,7 @@ public class XmlToCsv {
 		return result;
 	}
 
+	/** Rewrite URLs */
 	private static String rewriteAttributionUrl(String url) {
 		    String result = "";    
 		    String[] results = url.split("/");
@@ -236,6 +269,7 @@ public class XmlToCsv {
 		    return result;
 	}
 
+	/** Get certain nodes from the dataset, specified by expression */
 	private static NodeList getNodes(String dataset, String expression) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
 		    DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();   
 		    domFactory.setIgnoringComments(true);
@@ -246,18 +280,18 @@ public class XmlToCsv {
 		    return nodeList;
 	}
 
-
+	/** Write a matrix to CSV */
 	  private static void writeToCSV(List<List<String>> results, String filename) throws IOException {
 		    boolean created = false;
 		    File file = new File(filename);
 		    
+		    //Create file if it doesn't exist
 		    if (!file.exists()) {
 		      file.createNewFile();
 		      created = true;
 		    }
 		    
 		    FileWriter writer = new FileWriter(file.getName(), true);
-		    //TODO: Check if rows are not empty.
 		    if (results.size() == 0) {
 		      System.out.println("No results Found.");
 		    }
@@ -269,6 +303,7 @@ public class XmlToCsv {
 		        writer.append('\n');
 		      }
 		      
+		      //Append all results to the writer
 		      List<List<String>> rows = results;
 		      for (int i = 1; i < rows.size(); i++) {
 		        List<String> row = rows.get(i);
