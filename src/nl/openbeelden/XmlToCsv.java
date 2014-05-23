@@ -183,6 +183,7 @@ public class XmlToCsv {
 			headers.add("Extent");
 			headers.add("Language");
 			headers.add("AttributionURL");
+			headers.add("URL");
 			result.add(headers);
 
 			//Get for every video the different features
@@ -221,6 +222,8 @@ public class XmlToCsv {
 		            //Get attributionURL
 		            String attrurl = firstVideo.getElementsByTagName("oi:attributionURL").item(0).getChildNodes().item(0).getNodeValue();
 		            attrurl = rewriteAttributionUrl(attrurl);
+		            //Get MPEG URL
+		            String url = firstVideo.getElementsByTagName("oi:medium").item(0).getChildNodes().item(0).getNodeValue();
 		            
 		            //Add all features to a row and add the row to the matrix
 			        ArrayList<String> row = new ArrayList<String>();
@@ -232,6 +235,7 @@ public class XmlToCsv {
 			        row.add(extent);
 			        row.add(language);
 			        row.add(attrurl);
+			        row.add(url);
 			        result.add(row);
 		        }
 			}

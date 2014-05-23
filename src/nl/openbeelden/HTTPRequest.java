@@ -26,6 +26,7 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -57,7 +58,7 @@ public class HTTPRequest {
 			conn = (HttpURLConnection) url.openConnection();
 			conn.setRequestMethod("GET");
 			rd = new BufferedReader(
-					new InputStreamReader(conn.getInputStream()));
+					new InputStreamReader(conn.getInputStream(), "UTF-8"));
 			//Add everything that is read to a String
 			while ((line = rd.readLine()) != null) {
 				result += line;
@@ -80,8 +81,14 @@ public class HTTPRequest {
 		NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document,
 				XPathConstants.NODESET);
 		String token = "";
-		if (nodeList.item(0).getFirstChild() != null)
-			token = nodeList.item(0).getFirstChild().getNodeValue();
+		if (nodeList != null) {
+			System.out.println("NodeList is not null");
+			if (nodeList.item(0) != null) {
+				System.out.println("Item(0) is not null");
+				if (nodeList.item(0).getFirstChild() != null)
+					token = nodeList.item(0).getFirstChild().getNodeValue();
+			}
+		}
 		
 		System.out.println(token);
 		//As long as there are more results (pagination is used), retrieve them
@@ -113,7 +120,7 @@ public class HTTPRequest {
 		NodeList nodes = doc.getElementsByTagName("record");
 		
 		//Start with 1, because 0 is done before. 33 is hardcoded the number of pages that are retrieved and thus the number of files to be merged.
-		for (int i = 1; i < 33; i++){
+		for (int i = 1; i < 42; i++){
 			Document doctemp = builder.parse(new File("metadata" + i + ".xml"));
 			NodeList nodestemp = doctemp.getElementsByTagName("record");
 			
@@ -333,11 +340,11 @@ public class HTTPRequest {
 			XPathExpressionException {
 		HTTPRequest request = new HTTPRequest();
 		//request.createXMLFiles();
-		//request.mergeXMLFiles();
-		//request.removeDuplicateNodes();
-		int total = request.getTotalItems();
-		System.out.println(total);
-		request.printStatistics();
+		request.mergeXMLFiles();
+		request.removeDuplicateNodes();
+		//int total = request.getTotalItems();
+		//System.out.println(total);
+		//request.printStatistics();
 	}
 }
 
